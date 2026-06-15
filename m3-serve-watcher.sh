@@ -25,7 +25,7 @@ while [ $i -lt 120 ]; do
   i=$((i+1))
   R=$(probe)
   case "$R" in
-    *STATE=SERVING*) echo "RESULT=SERVING iter=$i"; tg "🟢 M3 TP=3 endpoint is UP — /v1/models is responding on :8000. Kai's verifying generation + tool-calling now."; break ;;
+    *STATE=SERVING*) echo "RESULT=SERVING iter=$i"; tg "🟢 M3 TP=3 endpoint is UP - /v1/models is responding on :8000. Kai's verifying generation + tool-calling now."; break ;;
     *STATE=CONTAINER_EXITED*) echo "RESULT=CONTAINER_EXITED iter=$i"; break ;;
     *STATE=ENGINE_FAILED*) echo "RESULT=ENGINE_FAILED iter=$i"; break ;;
     *) : ;;  # WORKING, keep polling

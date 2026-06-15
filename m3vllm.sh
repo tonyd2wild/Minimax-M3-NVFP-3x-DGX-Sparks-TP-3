@@ -26,7 +26,7 @@ export SAFETENSORS_FAST_GPU=1
 # data-plane QP connects TIME OUT (ibv_modify_qp err 110): on our SWITCHLESS point-to-point /30 cabling NCCL
 # pairs the WRONG HCA->peer (e.g. Bluey rocep1s0f0=192.168.101.1/Asusi-link trying to reach Reddie 192.168.100.2
 # = a different cable). Switchless RoCE needs a RoCE switch (common L2 subnet) OR the NVIDIA Sync-Cluster-Assistant
-# NCCL-2.30u1 topology config — NOT a quick env fix. 3rd /30 (192.168.102) is configured + pingable for a future retry.
+# NCCL-2.30u1 topology config - NOT a quick env fix. 3rd /30 (192.168.102) is configured + pingable for a future retry.
 export NCCL_IB_DISABLE=1 NCCL_NET=Socket NCCL_SOCKET_IFNAME=enP7s7 GLOO_SOCKET_IFNAME=enP7s7
 export NCCL_CUMEM_ENABLE=0 NCCL_IGNORE_CPU_AFFINITY=1 NCCL_DEBUG=WARN
 export HF_HOME=/cache/huggingface HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
@@ -51,7 +51,7 @@ if ! python -c "import inspect; from b12x.integration.paged_attention_scratch im
   pip install -q --force-reinstall --no-deps git+https://github.com/lukealonso/b12x.git@08e980c303b0b6291700a6b85aa09aa874fc27cb 2>&1 | tail -3
 fi
 
-# NOTE: cutlass-dsl stays at the image's 4.5.2 — a runtime downgrade to eugr's 4.4.2 breaks flashinfer
+# NOTE: cutlass-dsl stays at the image's 4.5.2 - a runtime downgrade to eugr's 4.4.2 breaks flashinfer
 # (needs 4.5.x cutlass.cute.nvgpu.OperandMajorMode). 4.4.2 would require a FULL rebuild pinned to 4.4.2.
 # Our 4.5.2 compiles+warms clean (no ptxas reject), so the cutlass PTX bug (#3227) is likely already fixed in 4.5.2.
 

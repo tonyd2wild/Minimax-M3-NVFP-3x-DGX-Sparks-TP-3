@@ -1,5 +1,5 @@
 #!/bin/bash
-# M3 TP=3 serve verification — run ON Bluey (localhost:8000). Proves generation + minimax_m3
+# M3 TP=3 serve verification - run ON Bluey (localhost:8000). Proves generation + minimax_m3
 # tool-calling work cleanly (no <mm:think> / namespace-token leaks = the sglang bug we left).
 set -uo pipefail
 BASE="${BASE:-http://localhost:8000}"

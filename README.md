@@ -8,7 +8,7 @@ This documents the parts that aren't in any existing guide: the **head-node OOM 
 **multi-node Ray/NCCL setup** that took this from "crashes at warmup" to "serving + tool-calling clean."
 
 > Status: **base TP=3 serving is verified.** Single-stream throughput is modest (~6 tok/s) and the
-> bottleneck is the inter-node interconnect, not compute — see [Performance](#performance--whats-next).
+> bottleneck is the inter-node interconnect, not compute - see [Performance](#performance--whats-next).
 > Two speed levers (RoCE, EAGLE3) are documented at the bottom with their exact current state.
 
 ---
@@ -25,7 +25,7 @@ This documents the parts that aren't in any existing guide: the **head-node OOM 
   (build `0.11.2.dev279+chthonic.consecration.b12x.cu132`, torch 2.12.0+cu132, CUDA 13.2.1).
   Contains the MiniMax-M3 model code, the Rust `minimax_m3` tool/reasoning parsers, and
   commit **`fb63c9a` "Support MiniMax M3 TP3 virtual sharding"** (pads attention heads 64→96,
-  KV 4→6 so the model shards cleanly ÷3 — **auto-applied at `--tensor-parallel-size 3`**, topology-agnostic).
+  KV 4→6 so the model shards cleanly ÷3 - **auto-applied at `--tensor-parallel-size 3`**, topology-agnostic).
 - **b12x** kernel lib (`lukealonso/b12x`), installed **from master `08e980c`** at container start
   (the published PR build lacks `B12XPagedAttentionScratchCaps.copy_runtime_metadata` that chthonic needs).
 - `cutlass-dsl` stays at the image's **4.5.2** (a runtime downgrade to 4.4.2 breaks flashinfer's
@@ -35,20 +35,20 @@ This documents the parts that aren't in any existing guide: the **head-node OOM 
 
 Everything else is "follow Luke's flags." These are the non-obvious ones that gate a working bring-up:
 
-1. **`--load-format safetensors`** — `instanttensor`'s GDS `open()` throws `_C.open std::exception`
+1. **`--load-format safetensors`** - `instanttensor`'s GDS `open()` throws `_C.open std::exception`
    under torch 2.12 on Spark (no GPUDirect Storage). Use plain safetensors.
-2. **`--object-store-memory 1073741824`** (1 GB) on **every** `ray start` — Ray defaults to reserving
+2. **`--object-store-memory 1073741824`** (1 GB) on **every** `ray start` - Ray defaults to reserving
    ~30 % of RAM (~36 GB/node) for a plasma object store **vLLM TP never uses** (tensors go over NCCL).
    On the head (which alone also runs the Ray GCS + API server) that reserve + the 84 GB shard + KV
    **overcommits the 121 GB box → `dmesg: NVRM: Out of memory` during weight-load → rank-0 dies.**
    Capping it freed ~35 GB/node (cluster object store 109 GB → 3 GB) and killed the load-time OOM.
-3. **`RAY_memory_monitor_refresh_ms=0`** — after a *fully successful* warmup the head sits at ~96 %
+3. **`RAY_memory_monitor_refresh_ms=0`** - after a *fully successful* warmup the head sits at ~96 %
    RAM (normal for a loaded model on unified memory). Ray's generic **95 % memory monitor** then
-   **false-kills** the TP0 worker (`exit_type=NODE_OUT_OF_MEMORY`, classified `OOMContext`) — but there
+   **false-kills** the TP0 worker (`exit_type=NODE_OUT_OF_MEMORY`, classified `OOMContext`) - but there
    is **no real OOM** (no NVRM error, no Linux OOM-kill, ~4.4 GB still free). Disable the monitor;
    the Linux kernel + NVIDIA driver remain the real backstops. (Ray's own log recommends this exact var.)
-4. **b12x from master** (`08e980c`, pure-python) — see above; the PR wheel is missing `copy_runtime_metadata`.
-5. **`fb63c9a` virtual-TP sharding** — nothing to set; it engages automatically at TP=3 and is what makes
+4. **b12x from master** (`08e980c`, pure-python) - see above; the PR wheel is missing `copy_runtime_metadata`.
+5. **`fb63c9a` virtual-TP sharding** - nothing to set; it engages automatically at TP=3 and is what makes
    M3's 64-head / 4-KV-head attention divisible by 3. Without this commit, TP=3 is impossible (you'd be stuck on PP).
 
 Diagnostic tip that saved hours: we don't run with `--rm`, so a crashed container keeps `/tmp/ray`.
@@ -129,9 +129,9 @@ docker start vllm_m3        # CMD = bash /m3vllm.sh leader
 ```
 
 Bring-up ≈ 10–12 min (per-node 84 GB shard load + torch.compile + warmup + PIECEWISE cudagraph capture).
-A quiet stretch during safetensors load is normal — do not kill it.
+A quiet stretch during safetensors load is normal - do not kill it.
 
-## Verification (the whole point — tool-calling clean)
+## Verification (the whole point - tool-calling clean)
 
 ```
 curl :8000/v1/chat/completions -d '{"model":"minimax-m3","messages":[{"role":"user",
@@ -141,15 +141,15 @@ curl :8000/v1/chat/completions -d '{"model":"minimax-m3","messages":[{"role":"us
 ```
 Expected: `finish_reason=tool_calls`, one clean `get_weather` call, `arguments` = valid JSON
 `{"city":"Seattle"}`, **zero** `<mm:think>` / `<tool_call>` / `<invoke>` leakage. Reasoning is returned
-under the `reasoning` key (not `reasoning_content`) — content carries the clean answer either way.
+under the `reasoning` key (not `reasoning_content`) - content carries the clean answer either way.
 
 ## Performance + what's next
 
-- **Single-stream ~6 tok/s, ~10 tok/s aggregate @ 4 concurrent.** Modest — and the bottleneck is the
+- **Single-stream ~6 tok/s, ~10 tok/s aggregate @ 4 concurrent.** Modest - and the bottleneck is the
   **interconnect, not compute**: enabling CUDA graphs only moved single-stream +0.3 tok/s, proving the
   time is spent waiting on the cross-node all-reduce.
 - **NCCL is running over the 1 GbE management NIC (`enP7s7`).** TP=3 does ~120 cross-node all-reduces per
-  token; over 1 Gbps that dominates. (This is also why a PP=3 setup can feel faster single-stream — PP
+  token; over 1 Gbps that dominates. (This is also why a PP=3 setup can feel faster single-stream - PP
   only passes the hidden state twice per token.) The 200 G ConnectX-7 ports sit unused for model traffic.
 - **RoCE over the 200 G ring (the real fix, in progress):** the 3 Sparks cable into a triangle
   (two QSFP ports each, no switch). Naively pointing NCCL at RoCE **fails** because a single global
@@ -158,10 +158,10 @@ under the `reasoning` key (not `reasoning_content`) — content carries the clea
   zeroconf 169.254 addrs so the RoCE-v2 GID is at a consistent index, then **unset `NCCL_IB_GID_INDEX`**
   and let NCCL pick per-connection via `NCCL_IB_ADDR_RANGE=<fabric CIDR>` + `NCCL_IB_ADDR_FAMILY=AF_INET`,
   with `NCCL_IB_HCA=<cabled HCAs only>`, `NCCL_CROSS_NIC=1`, and **`NCCL_NET_GDR_LEVEL=0`** (mandatory on
-  GB10 — unified memory breaks GPU-Direct RDMA). NVIDIA flags switchless-3-node NCCL as a manual-build
+  GB10 - unified memory breaks GPU-Direct RDMA). NVIDIA flags switchless-3-node NCCL as a manual-build
   rough edge; a small RoCE switch (one common /24) is the fully-supported fallback.
 - **EAGLE3 speculative decoding (M3 has no native MTP):** the chthonic M3 class implements `SupportsEagle3`,
-  and `Inferact/MiniMax-M3-EAGLE3` loads — set `draft_tensor_parallel_size:1` (the draft's 64 heads aren't
+  and `Inferact/MiniMax-M3-EAGLE3` loads - set `draft_tensor_parallel_size:1` (the draft's 64 heads aren't
   ÷3 and don't get virtual-TP padding). Current blocker: the bf16 draft has no quant config, so vLLM tries
   to apply the **NVFP4** target quant to it and `get_quant_config` dead-ends (`hf_overrides must be a dict`).
   Open: ship the draft a small fp8 quant config, or wait for a pre-quantized eagle3 draft.
