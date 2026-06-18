@@ -1,10 +1,10 @@
 #!/bin/bash
 # M3 TP=3 multi-node vLLM launcher, RoCE 200G data path (eugr mesh recipe).
 # Runs INSIDE the vllm-m3-chthonic:nccl230u1 container (NCCL 2.30.7 w/ subnet-aware-routing).
-# Usage: m3vllm-roce.sh leader   (Bluey/head 10.0.0.6)  |  m3vllm-roce.sh worker (Reddie/Asusi)
+# Usage: m3vllm-roce.sh leader   (Bluey/head <NODE0_IP>)  |  m3vllm-roce.sh worker (Reddie/Asusi)
 set -x
 ROLE="${1:?usage: m3vllm-roce.sh leader|worker}"
-HEAD_IP="${HEAD_IP:-10.0.0.6}"
+HEAD_IP="${HEAD_IP:-<NODE0_IP>}"
 RAY_PORT=6379
 CLUSTER_GPUS=3
 

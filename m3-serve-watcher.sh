@@ -2,8 +2,8 @@
 # Watches the M3 TP=3 serve bring-up on Bluey. Exits (re-invoking Kai) + pings Tony on terminal:
 # SERVING (/v1/models 200) / CRASHED (container exited or EngineCore failed) / TIMEOUT.
 SK=/Users/clawdbot/.ssh/id_ed25519_spark
-JUMP="tonyspark3@100.90.25.78"
-HEAD="tonyspark1@10.0.0.6"
+JUMP="<node2-host>@<NODE2_TAILNET_IP>"
+HEAD="<node0-host>@<NODE0_IP>"
 ssh-add "$SK" 2>/dev/null || true
 set -a; . /Users/clawdbot/.claude/channels/telegram/.env 2>/dev/null; set +a
 TOK="${TELEGRAM_BOT_TOKEN:-$BOT_TOKEN}"; CHAT=7937060346

@@ -1,10 +1,10 @@
 #!/bin/bash
 # M3 TP=3 multi-node vLLM launcher (runs INSIDE the vllm-m3-chthonic container).
-# Usage: m3vllm.sh leader    (on Bluey/head, 10.0.0.6)
+# Usage: m3vllm.sh leader    (on Bluey/head, <NODE0_IP>)
 #        m3vllm.sh worker    (on Reddie/Asusi)
 set -x
 ROLE="${1:?usage: m3vllm.sh leader|worker}"
-HEAD_IP="${HEAD_IP:-10.0.0.6}"
+HEAD_IP="${HEAD_IP:-<NODE0_IP>}"
 RAY_PORT=6379
 CLUSTER_GPUS=3
 

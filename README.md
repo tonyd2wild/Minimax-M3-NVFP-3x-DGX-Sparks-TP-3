@@ -33,7 +33,7 @@ This documents the parts that aren't in any existing guide: the **head-node OOM 
 ## Hardware / topology
 
 - **3× NVIDIA DGX Spark** (GB10, **compute sm_121**, ARM64/aarch64, **128 GB unified memory** each).
-- Nodes (mgmt net `10.0.0.0/24` over 1 GbE `enP7s7`): `bluey` 10.0.0.6 (head/rank0), `reddie` 10.0.0.9, `asusi` 10.0.0.5.
+- Nodes (mgmt net `10.0.0.0/24` over 1 GbE `enP7s7`): `bluey` <NODE0_IP> (head/rank0), `reddie` <NODE1_IP>, `asusi` <NODE2_IP>.
 - Model cached on all 3 at `~/.cache/huggingface/hub/models--lukealonso--MiniMax-M3-NVFP4`.
 
 ## Engine / image
@@ -82,10 +82,10 @@ Runs **inside** the container; `leader` on the head, `worker` on the other two. 
 ```bash
 #!/bin/bash
 # M3 TP=3 multi-node vLLM launcher (runs INSIDE the vllm-m3-chthonic container).
-# Usage: m3vllm.sh leader   (head, 10.0.0.6)   |   m3vllm.sh worker   (the other 2)
+# Usage: m3vllm.sh leader   (head, <NODE0_IP>)   |   m3vllm.sh worker   (the other 2)
 set -x
 ROLE="${1:?usage: m3vllm.sh leader|worker}"
-HEAD_IP="${HEAD_IP:-10.0.0.6}"; RAY_PORT=6379; CLUSTER_GPUS=3
+HEAD_IP="${HEAD_IP:-<NODE0_IP>}"; RAY_PORT=6379; CLUSTER_GPUS=3
 
 # b12x / M3 / arch envs (sm_121a for GB10)
 export CUTE_DSL_ARCH=sm_121a
