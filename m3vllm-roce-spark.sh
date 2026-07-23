@@ -112,6 +112,7 @@ exec vllm serve /cache/huggingface/hub/models--lukealonso--MiniMax-M3-NVFP4 \
   --spec-model nvidia/MiniMax-M3-DSpark \
   --spec-tokens 4 \
   --spec-method dflash \
+  --speculative-config '{"draft_tensor_parallel_size": 1}' \
   --max-num-seqs 2 \
   --max-num-batched-tokens 4096 \
   --enable-chunked-prefill \
