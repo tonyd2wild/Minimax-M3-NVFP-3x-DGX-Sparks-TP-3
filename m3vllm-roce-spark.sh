@@ -109,7 +109,7 @@ exec vllm serve /cache/huggingface/hub/models--lukealonso--MiniMax-M3-NVFP4 \
   --block-size 128 \
   --load-format safetensors \
   --max-model-len 200000 \
-  --spec-model /cache/huggingface/hub/models--nvidia--MiniMax-M3-DSpark \
+  --spec-model nvidia/MiniMax-M3-DSpark \
   --spec-tokens 4 \
   --spec-method dflash \
   --max-num-seqs 2 \
