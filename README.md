@@ -249,8 +249,8 @@ Deployed `m3-health-watchdog.sh` and enabled `m3-health-watchdog.timer` running 
 - **RoCE 128 MB Socket Buffers:** Created `99-roce-buffers.conf` (`net.core.rmem_max = 134217728` & `wmem_max = 134217728`) for ConnectX-7 200G AllReduce burst capacity.
 - **Realtek NIC Reboot Fix:** Created `blacklist-r8169.conf` (`blacklist r8169`) to prevent warm-reboot OOB Ethernet drops (NVIDIA Forum Thread #360654).
 
-### 5. Memory Utilization Goosed to 0.85 (Full 256K Context Window)
-Updated `--gpu-memory-utilization 0.85` and `--max-model-len 262144`. Expands per-node FP8 KV cache memory by +2.4 GB/node, unlocking full **256,000 token context window** while preserving 19.2 GB per node of host RAM headroom for safe CUDA graph warmup capture.
+### 5. Memory Utilization Optimized to 0.83 (Full 256K Context Window)
+Updated `--gpu-memory-utilization 0.83` and `--max-model-len 262144`. Expands per-node FP8 KV cache memory by +1.22 GB/node (100.95 GiB requested / 102.84 GiB available free RAM at startup), unlocking full **256,000 token context window** with 1.89 GiB per node of safe startup headroom.
 
 ### 6. NVIDIA DSpark Speculative Decoding Roadmap (nvidia/MiniMax-M3-DSpark)
 Unlike EAGLE-3 (which failed on TP=3 due to 64->96 head divisibility conflicts), **DFlash / DSpark** (by Z Lab, ICML 2026 & NVIDIA) uses a lightweight **block diffusion model** to generate an entire block of future candidate tokens (4-8 tokens) in a single non-autoregressive forward pass. NVIDIA officially released [`nvidia/MiniMax-M3-DSpark`](https://huggingface.co/nvidia/MiniMax-M3-DSpark) on Hugging Face as the native draft head for MiniMax-M3 on DGX Spark. Passing `--speculative-model nvidia/MiniMax-M3-DSpark` is expected to unlock **18-25+ tok/s** decode throughput over RoCE 200G.
