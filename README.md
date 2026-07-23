@@ -249,8 +249,11 @@ Deployed `m3-health-watchdog.sh` and enabled `m3-health-watchdog.timer` running 
 - **RoCE 128 MB Socket Buffers:** Created `99-roce-buffers.conf` (`net.core.rmem_max = 134217728` & `wmem_max = 134217728`) for ConnectX-7 200G AllReduce burst capacity.
 - **Realtek NIC Reboot Fix:** Created `blacklist-r8169.conf` (`blacklist r8169`) to prevent warm-reboot OOB Ethernet drops (NVIDIA Forum Thread #360654).
 
-### 5. DFlash Speculative Decoding Roadmap (arXiv:2602.06036)
-Unlike EAGLE-3 (which failed on TP=3 due to 64->96 head divisibility conflicts), **DFlash** (by Z Lab, ICML 2026) uses a lightweight **block diffusion model** to generate an entire block of future candidate tokens (4-8 tokens) in a single non-autoregressive forward pass. Because DFlash is **head-dimension agnostic**, it works seamlessly with virtual TP=3 head sharding (`fb63c9a`). Once a `MiniMax-M3-DFlash` speculator checkpoint is trained/released on Hugging Face (`z-lab/dflash`), passing `--speculative-model` is expected to unlock **18-25+ tok/s** decode throughput over RoCE 200G.
+### 5. Memory Utilization Goosed to 0.85 (Full 256K Context Window)
+Updated `--gpu-memory-utilization 0.85` and `--max-model-len 262144`. Expands per-node FP8 KV cache memory by +2.4 GB/node, unlocking full **256,000 token context window** while preserving 19.2 GB per node of host RAM headroom for safe CUDA graph warmup capture.
+
+### 6. NVIDIA DSpark Speculative Decoding Roadmap (nvidia/MiniMax-M3-DSpark)
+Unlike EAGLE-3 (which failed on TP=3 due to 64->96 head divisibility conflicts), **DFlash / DSpark** (by Z Lab, ICML 2026 & NVIDIA) uses a lightweight **block diffusion model** to generate an entire block of future candidate tokens (4-8 tokens) in a single non-autoregressive forward pass. NVIDIA officially released [`nvidia/MiniMax-M3-DSpark`](https://huggingface.co/nvidia/MiniMax-M3-DSpark) on Hugging Face as the native draft head for MiniMax-M3 on DGX Spark. Passing `--speculative-model nvidia/MiniMax-M3-DSpark` is expected to unlock **18-25+ tok/s** decode throughput over RoCE 200G.
 
 ## Credits & links
 
@@ -259,8 +262,8 @@ Unlike EAGLE-3 (which failed on TP=3 due to 64->96 head divisibility conflicts),
 - **mashie** (NVIDIA DGX Spark forum) — the **cold-power-drain** tip that took raw `ib_write_bw` from ~12.8 Gb/s to 111.85 Gb/s.
 - A **ChatGPT-assisted debugging pass** that isolated the baked-`LD_PRELOAD` local-inference NCCL shim.
 - **Inferact** — the [`MiniMax-M3-EAGLE3`](https://huggingface.co/Inferact/MiniMax-M3-EAGLE3) draft (EAGLE3 speculative decoding).
-- **Z Lab** — the [`DFlash`](https://github.com/z-lab/dflash) block diffusion speculative decoding framework (arXiv:2602.06036).
+- **Z Lab & NVIDIA** — the [`DFlash`](https://github.com/z-lab/dflash) framework (arXiv:2602.06036) & [`nvidia/MiniMax-M3-DSpark`](https://huggingface.co/nvidia/MiniMax-M3-DSpark) draft head model.
 - The **NVIDIA DGX Spark forum** community (thread *"MiniMax M3 NVFP4 for quad DGX Spark"*).
 
-Recipe assembled, OOM/Ray fixes diagnosed, EAGLE3 + RoCE (SOLVED) completed, and Production Optimization Suite applied, 2026-07-22.
+Recipe assembled, OOM/Ray fixes diagnosed, EAGLE3 + RoCE (SOLVED) completed, and Production Optimization Suite (0.85 / 256K) applied, 2026-07-23.
 

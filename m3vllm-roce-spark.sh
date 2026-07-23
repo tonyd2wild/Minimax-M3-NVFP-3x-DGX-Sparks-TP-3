@@ -1,10 +1,10 @@
 #!/bin/bash
-# M3 TP=3 multi-node vLLM launcher, RoCE 200G data path (eugr mesh recipe).
+# M3 TP=3 multi-node vLLM launcher, RoCE 200G data path — adapted for our 3-node DGX Spark ring.
 # Runs INSIDE the vllm-m3-chthonic:nccl230u1 container (NCCL 2.30.7 w/ subnet-aware-routing).
-# Usage: m3vllm-roce.sh leader   (Bluey/head <NODE0_IP>)  |  m3vllm-roce.sh worker (Reddie/Asusi)
+# Usage: m3vllm-roce-spark.sh leader   (head 192.168.86.48)  |  m3vllm-roce-spark.sh worker (worker1/2)
 set -x
-ROLE="${1:?usage: m3vllm-roce.sh leader|worker}"
-HEAD_IP="${HEAD_IP:-<NODE0_IP>}"
+ROLE="${1:?usage: m3vllm-roce-spark.sh leader|worker}"
+HEAD_IP="${HEAD_IP:-192.168.86.48}"
 RAY_PORT=6379
 CLUSTER_GPUS=3
 
@@ -21,28 +21,18 @@ export CUDA_LAUNCH_BLOCKING=0
 export SAFETENSORS_FAST_GPU=1
 
 # --- NCCL over RoCE (eugr 3-node mesh recipe). NCCL 2.30.7 (v2.30u1) provides SUBNET_AWARE_ROUTING. ---
-# Ring legs (Agent B verified, live, GID idx3 RoCEv2): each node uses its two slot-1 RoCE HCAs
-# (rocep1s0f0 + rocep1s0f1) to reach its two neighbors over distinct /30 subnets (192.168.100/101/102).
-# Bootstrap/control stays on the 1GbE mgmt NIC (enP7s7); the DATA plane rides IB/RoCE.
-# SUBNET_AWARE_ROUTING + MERGE_NICS=0 are what map each QP to the correct cable -> fixes the old err 110.
+# Control/bootstrap rides the common 192.168.86.x subnet; DATA plane rides 100% IB/RoCE (192.168.100.0/20).
+# Expose all 4 logical HCA endpoints (Issue #1 fix) to achieve full ~183 Gbps bandwidth across GB10 PCIe-x4 halves.
 export NCCL_IB_DISABLE=0
 export NCCL_NET=IB
-export NCCL_SOCKET_IFNAME=enP7s7 GLOO_SOCKET_IFNAME=enP7s7
+export NCCL_SOCKET_IFNAME=wlP9s9 GLOO_SOCKET_IFNAME=wlP9s9
 export NCCL_IB_HCA=rocep1s0f0,rocep1s0f1,roceP2p1s0f0,roceP2p1s0f1
-# CRITICAL: do NOT hardcode NCCL_IB_GID_INDEX. Leaving it at default (-1) lets NCCL dynamically
-# select the correct RoCEv2 GID per-peer by CIDR via NCCL_IB_ADDR_RANGE. That dynamic selection IS
-# how subnet-aware-routing pairs the right local HCA to each neighbor on the switchless /30 mesh.
-# Hardcoding GID_INDEX=3 DISABLES it -> NCCL cross-pairs HCAs (e.g. the reddie-facing HCA dials the
-# bluey leg) -> ibv_modify_qp err 110 Connection timed out. (Diagnosed 2026-06-15; NCCL_IB_ADDR_RANGE
-# only takes effect when GID index is unset. Credit: ChatGPT via Tony + NVIDIA NCCL env docs.)
+# CRITICAL: do NOT hardcode NCCL_IB_GID_INDEX. Leaving it at default lets NCCL dynamically
+# select the correct RoCEv2 GID per-peer by CIDR via NCCL_IB_ADDR_RANGE.
 export NCCL_IB_ADDR_RANGE=192.168.100.0/20
 export NCCL_IB_MERGE_NICS=0
 export NCCL_NET_PLUGIN=none
 export NCCL_IB_SUBNET_AWARE_ROUTING=1
-# CROSS_NIC=1 (ChatGPT 5.5 review 2026-06-15): THE fix for this asymmetric switchless mesh. Each node's
-# rocep1s0f0 faces a DIFFERENT neighbor, so NCCL's default same-index HCA pairing dials a non-cabled /30
-# -> err 110. CROSS_NIC=1 lets the ring/tree use different-numbered NICs on each node. Plus explicit
-# RoCEv2/IPv4 defaults, and NET_GDR_LEVEL=LOC disables GPUDirect RDMA (GB10 unified-memory safety).
 export NCCL_CROSS_NIC=1
 export NCCL_IB_ADDR_FAMILY=AF_INET
 export NCCL_IB_ROCE_VERSION_NUM=2
@@ -52,7 +42,8 @@ export HF_HOME=/cache/huggingface HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
 export RAY_DEDUP_LOGS=0
 export RAY_memory_monitor_refresh_ms=0
 
-SELF_IP="$(hostname -I | tr ' ' '\n' | grep -E '^10\.0\.0\.' | head -1)"
+# Extract self IP from mgmt net (192.168.86.x)
+SELF_IP="$(hostname -I | tr ' ' '\n' | grep -E '^192\.168\.86\.' | head -1)"
 echo "ROLE=$ROLE SELF_IP=$SELF_IP HEAD_IP=$HEAD_IP"
 
 # Ray (not in Luke's single-node image).
@@ -67,10 +58,7 @@ if ! python -c "import inspect; from b12x.integration.paged_attention_scratch im
 fi
 
 # Force the host-built NCCL v2.30u1 to actually load. The ray/b12x pip installs above reinstall the
-# nvidia-nccl wheel (2.30.4) and clobber our symlink, so the cluster was running 2.30.4 not 2.30u1
-# (confirmed via the runtime banner). eugr's working mesh recipe specifically needs 2.30u1, so re-point
-# the symlink, prepend our build dir to LD_LIBRARY_PATH, and override the baked local-inference NCCL
-# LD_PRELOAD AFTER the pip installs. (2026-06-15)
+# nvidia-nccl wheel (2.30.4) and clobber our symlink, so re-point after pip installs.
 PIPNCCL=/opt/venv/lib/python3.12/site-packages/nvidia/nccl/lib
 if [ -e /opt/nccl230/build/lib/libnccl.so.2 ]; then
   rm -f "$PIPNCCL/libnccl.so.2" 2>/dev/null
@@ -95,7 +83,7 @@ if [ "$ROLE" = "worker" ]; then
 fi
 
 # leader
-ray start --head --port="${RAY_PORT}" --num-gpus=1 --node-ip-address="${HEAD_IP}" --dashboard-host=0.0.0.0 \
+ray start --head --port="${RAY_PORT}" --num-gpus=1 --node-ip-address="$HEAD_IP" --dashboard-host=0.0.0.0 \
   --object-store-memory=1073741824
 echo "WAIT_FOR_${CLUSTER_GPUS}_GPU"
 for i in $(seq 1 90); do
@@ -104,7 +92,7 @@ for i in $(seq 1 90); do
 done
 ray status 2>&1 | tail -20
 
-exec vllm serve lukealonso/MiniMax-M3-NVFP4 \
+exec vllm serve /cache/huggingface/hub/models--lukealonso--MiniMax-M3-NVFP4 \
   --served-model-name minimax-m3 \
   --host 0.0.0.0 --port 8000 \
   --trust-remote-code \
