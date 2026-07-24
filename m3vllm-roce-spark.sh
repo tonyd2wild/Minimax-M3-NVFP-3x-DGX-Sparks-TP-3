@@ -110,7 +110,7 @@ exec vllm serve /cache/huggingface/hub/models--lukealonso--MiniMax-M3-NVFP4 \
   --load-format safetensors \
   --max-model-len 200000 \
   --max-num-seqs 2 \
-  --max-num-batched-tokens 4096 \
+  --max-num-batched-tokens 16384 \
   --enable-chunked-prefill \
   --enable-prefix-caching \
   --skip-mm-profiling \
