@@ -98,7 +98,7 @@ exec vllm serve /cache/huggingface/hub/models--lukealonso--MiniMax-M3-NVFP4 \
   --trust-remote-code \
   --tensor-parallel-size 3 \
   --distributed-executor-backend ray \
-  --gpu-memory-utilization 0.82 \
+  --gpu-memory-utilization 0.83 \
   --quantization modelopt_fp4 \
   --kv-cache-dtype fp8_e4m3 \
   --attention-backend B12X_ATTN \
@@ -109,9 +109,6 @@ exec vllm serve /cache/huggingface/hub/models--lukealonso--MiniMax-M3-NVFP4 \
   --block-size 128 \
   --load-format safetensors \
   --max-model-len 200000 \
-  --spec-model nvidia/MiniMax-M3-DSpark \
-  --spec-tokens 4 \
-  --spec-method dflash \
   --max-num-seqs 2 \
   --max-num-batched-tokens 4096 \
   --enable-chunked-prefill \

@@ -38,9 +38,6 @@ ssh "spark@$WORKER1_MGMT" "sg docker -c 'docker run -d --name $CONTAINER --privi
   --entrypoint bash \
   -v /home/spark/.cache/huggingface:/cache/huggingface \
   -v /home/spark/m3vllm-roce-spark.sh:/m3vllm.sh:ro \
-  -v /home/spark/patches/qwen3_dflash.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_dflash.py:ro \
-  -v /home/spark/patches/model.py:/opt/venv/lib/python3.12/site-packages/vllm/config/model.py:ro \
-  -v /home/spark/patches/speculative.py:/opt/venv/lib/python3.12/site-packages/vllm/config/speculative.py:ro \
   -e HEAD_IP=$HEAD_MGMT \
   $IMAGE \
   /m3vllm.sh worker'" 2>&1
@@ -53,9 +50,6 @@ ssh "spark@$WORKER2_MGMT" "sg docker -c 'docker run -d --name $CONTAINER --privi
   --entrypoint bash \
   -v /home/spark/.cache/huggingface:/cache/huggingface \
   -v /home/spark/m3vllm-roce-spark.sh:/m3vllm.sh:ro \
-  -v /home/spark/patches/qwen3_dflash.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_dflash.py:ro \
-  -v /home/spark/patches/model.py:/opt/venv/lib/python3.12/site-packages/vllm/config/model.py:ro \
-  -v /home/spark/patches/speculative.py:/opt/venv/lib/python3.12/site-packages/vllm/config/speculative.py:ro \
   -e HEAD_IP=$HEAD_MGMT \
   $IMAGE \
   /m3vllm.sh worker'" 2>&1
@@ -69,9 +63,6 @@ sg docker -c "docker run -d --name $CONTAINER --privileged --network host --ipc 
   --entrypoint bash \
   -v /home/spark/.cache/huggingface:/cache/huggingface \
   -v /home/spark/repo/m3-recipe/m3vllm-roce-spark.sh:/m3vllm.sh:ro \
-  -v /home/spark/repo/m3-recipe/patches/qwen3_dflash.py:/opt/venv/lib/python3.12/site-packages/vllm/model_executor/models/qwen3_dflash.py:ro \
-  -v /home/spark/repo/m3-recipe/patches/model.py:/opt/venv/lib/python3.12/site-packages/vllm/config/model.py:ro \
-  -v /home/spark/repo/m3-recipe/patches/speculative.py:/opt/venv/lib/python3.12/site-packages/vllm/config/speculative.py:ro \
   -e HEAD_IP=$HEAD_MGMT \
   $IMAGE \
   /m3vllm.sh leader" 2>&1
