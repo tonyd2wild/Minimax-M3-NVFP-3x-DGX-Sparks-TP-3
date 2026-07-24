@@ -249,11 +249,13 @@ Deployed `m3-health-watchdog.sh` and enabled `m3-health-watchdog.timer` running 
 - **RoCE 128 MB Socket Buffers:** Created `99-roce-buffers.conf` (`net.core.rmem_max = 134217728` & `wmem_max = 134217728`) for ConnectX-7 200G AllReduce burst capacity.
 - **Realtek NIC Reboot Fix:** Created `blacklist-r8169.conf` (`blacklist r8169`) to prevent warm-reboot OOB Ethernet drops (NVIDIA Forum Thread #360654).
 
-### 5. Memory Utilization Optimized to 0.83 (Full 256K Context Window)
-Updated `--gpu-memory-utilization 0.83` and `--max-model-len 262144`. Expands per-node FP8 KV cache memory by +1.22 GB/node (100.95 GiB requested / 102.84 GiB available free RAM at startup), unlocking full **256,000 token context window** with 1.89 GiB per node of safe startup headroom.
+### 5. Memory Utilization Tuned to 0.84 (Full 200K Context Window)
+Updated `--gpu-memory-utilization 0.84` and `--max-model-len 200000`. Provides 207,549 KV tokens of GPU cache (1.04× concurrency at 200K max sequence length), with ~17.5 GB free host LPDDR5X RAM as safe headroom against Linux OOM killer. Note: `0.83` allocates only 8.34 GiB KV cache — 0.10 GiB short of the 200K requirement; `0.85+` risks host RAM OOM on GB10 under load.
 
-### 6. NVIDIA DSpark Speculative Decoding Roadmap (nvidia/MiniMax-M3-DSpark)
-Unlike EAGLE-3 (which failed on TP=3 due to 64->96 head divisibility conflicts), **DFlash / DSpark** (by Z Lab, ICML 2026 & NVIDIA) uses a lightweight **block diffusion model** to generate an entire block of future candidate tokens (4-8 tokens) in a single non-autoregressive forward pass. NVIDIA officially released [`nvidia/MiniMax-M3-DSpark`](https://huggingface.co/nvidia/MiniMax-M3-DSpark) on Hugging Face as the native draft head for MiniMax-M3 on DGX Spark. Passing `--speculative-model nvidia/MiniMax-M3-DSpark` is expected to unlock **18-25+ tok/s** decode throughput over RoCE 200G.
+### 6. NVIDIA DSpark Speculative Decoding (nvidia/MiniMax-M3-DSpark)
+Unlike EAGLE-3 (which failed on TP=3 due to 64→96 head divisibility conflicts), **DFlash / DSpark** (by Z Lab, ICML 2026 & NVIDIA) uses a lightweight **block diffusion model** to generate an entire block of future candidate tokens (4-8 tokens) in a single non-autoregressive forward pass. NVIDIA officially released [`nvidia/MiniMax-M3-DSpark`](https://huggingface.co/nvidia/MiniMax-M3-DSpark) on Hugging Face as the native draft head for MiniMax-M3 on DGX Spark.
+
+**TP=3 head-divisibility solved (2026-07-24):** DSpark has 32 query heads (32 % 3 ≠ 0), which causes vLLM to crash on TP=3. We zero-padded the checkpoint to 36 heads (`MiniMax-M3-DSpark-Padded36`) so it shards natively across 3 ranks. Verified acceptance in vLLM logs: ~13% Position 1 acceptance rate on our hardware at low context. **Projected speedup at this acceptance rate is modest** — real-world gains depend on acceptance rate at longer contexts. The theoretical "18-25+ tok/s" requires substantially higher acceptance rates than we observed.
 
 ### 7. Head Node Hardware Mod Roadmap: Morefine G2 OCuLink eGPU + USB 3.2 OS Boot
 - **Hardware Hack:** Adapt the internal M.2 NVMe slot on Head Node (`gx10-0d82`) via an M.2-to-OCuLink adapter to attach a **Morefine G2 eGPU (NVIDIA RTX 5060 Ti 16GB GDDR7)**.
